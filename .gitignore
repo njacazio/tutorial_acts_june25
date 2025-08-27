@@ -1,2 +1,8 @@
 .DS_Store
+*.root
+*.pcm
+*.d
+*.so
+*.pyc
+.vscode
 geom/iris_segm_june25/material-map.json

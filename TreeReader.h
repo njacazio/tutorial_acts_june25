@@ -11,11 +11,13 @@
 #include <array>
 #include <string>
 #include <vector>
+#include <cmath>
 
 #include <TCanvas.h>
 #include <TEfficiency.h>
 #include <TFile.h>
 #include <TTree.h>
+#include <TMath.h>
 
 struct RecoTrackInfo
 {
