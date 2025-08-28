@@ -33,6 +33,12 @@ struct ParticleInfo
     double eta = 0;
     double p = 0;
     double pt = 0;
+    Int_t particleType = 0;
+    float vx = 0, vy = 0, vz = 0;
+    float vt = 0;
+    float px = 0, py = 0, pz = 0;
+    float m = 0;
+    float q = 0;
     UShort_t nHits = 0;
 };
 
@@ -532,7 +538,14 @@ struct ParticleReader : public TreeReader
             auto pt = std::hypot(px, py);
             auto p = std::hypot(pt, pz);
             auto eta = std::atanh(pz / p * 1.);
-            particles.push_back({particleId, eta, p, pt, nHits});
+            particles.push_back({particleId, eta, p, pt,
+                                 particleType,
+                                 vx, vy, vz,
+                                 vt,
+                                 px, py, pz,
+                                 m,
+                                 q,
+                                 nHits});
         }
         return particles;
     }

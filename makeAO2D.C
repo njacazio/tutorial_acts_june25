@@ -1,6 +1,8 @@
 #include "TreeReader.h"
 #include "dm_O2track_iu.h"
+#include "dm_O2mcparticle_001.h"
 #include "ReconstructionDataFormats/Track.h"
+#include "RootParticleReader.h"
 
 using O2Track = o2::track::TrackParCov;
 
@@ -25,7 +27,8 @@ void makeO2Track(O2Track &o2track, std::array<float, 3> xyz, std::array<float, 3
     new (&o2track) O2Track(x, ptetaphi[2], params, covm);
 }
 
-struct Track{
+struct Track
+{
     float X;
     float Y;
     float Z;
@@ -49,15 +52,21 @@ void convertTrackToO2Track(const Track &track, O2Track &o2track, bool atDCA)
     makeO2Track(o2track, xyz, ptetaphi, charge);
 }
 
-void makeAO2D(std::string inputFile = "../reco_output_pythia/tracksummary_ambi.root")
+void makeAO2D(std::string inputFile = "../reco_output_pythia/tracksummary_ambi.root",
+              std::string inputFileParticles = "../reco_output_pythia/particles_simulation.root")
 {
     O2track_iu track_iu;
+    O2mcparticle_001 particle_001;
     TFile *inFile = TFile::Open(inputFile.c_str());
+    TFile *inFileParticles = TFile::Open(inputFileParticles.c_str());
     TFile *outFile = TFile::Open("AO2D.root", "RECREATE");
     outFile->mkdir("DF_001");
     outFile->cd("DF_001");
     TTree *tree = (TTree *)inFile->Get("tracksummary");
+    TTree *treeParticles = (TTree *)inFileParticles->Get("particles");
+    treeParticles->Print();
     TrackSummaryReader tsReader(tree, false);
+    ParticleReader pReader(treeParticles, false);
 
     Track ttt;
     O2Track o2ttt;
@@ -90,8 +99,30 @@ void makeAO2D(std::string inputFile = "../reco_output_pythia/tracksummary_ambi.r
             track_iu.fSigned1Pt = o2ttt.getCharge2Pt();
             track_iu.fill();
         }
-    }
 
-    track_iu.write();
-    outFile->Close();
+        // Get the particles of the event being processed
+        const auto &particles = pReader.getParticles(tsReader.eventId);
+        for (const auto &particle : particles)
+        {
+            // Process each particle
+            particle_001.fIndexMcCollisions = tsReader.eventId;
+            particle_001.fPdgCode = particle.particleId;
+            particle_001.fWeight = 1.0;
+            particle_001.fPx = particle.px;
+            particle_001.fPy = particle.py;
+            particle_001.fPz = particle.pz;
+            float mass = particle.m;
+            particle_001.fE = std::sqrt(particle.px * particle.px + particle.py * particle.py + particle.pz * particle.pz + mass * mass);
+            particle_001.fVx = particle.vx;
+            particle_001.fVy = particle.vy;
+            particle_001.fVz = particle.vz;
+            particle_001.fVt = particle.vt;
+            particle_001.fill();
+        }
+        inFile->Close();
+        inFileParticles->Close();
+        track_iu.write();
+        particle_001.write();
+        outFile->Close();
+    }
 }

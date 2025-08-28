@@ -1,5 +1,5 @@
 #include <TTree.h>
-struct O2track_iu{
+struct O2track{
     uint64_t fIndexCollisions;
     uint8_t fTrackType;
     float fX;
@@ -10,8 +10,8 @@ struct O2track_iu{
     float fTgl;
     float fSigned1Pt;
     TTree *fTree;
-    O2track_iu() {
-        fTree = new TTree("O2track_iu", "");
+    O2track() {
+        fTree = new TTree("O2track", "");
         fTree->Branch("fIndexCollisions", &fIndexCollisions, "fIndexCollisions/I");
         fTree->Branch("fTrackType", &fTrackType, "fTrackType/b");
         fTree->Branch("fX", &fX, "fX/F");
@@ -22,7 +22,7 @@ struct O2track_iu{
         fTree->Branch("fTgl", &fTgl, "fTgl/F");
         fTree->Branch("fSigned1Pt", &fSigned1Pt, "fSigned1Pt/F");
     }
-    ~O2track_iu() {
+    ~O2track() {
         delete fTree;
     }
     void fill() {
