@@ -16,11 +16,6 @@ from acts.examples.reconstruction import (
     SpacePointGridConfigArg,
     SeedingAlgorithmConfigArg,
     AmbiguityResolutionConfig,
-    SeedingAlgorithm,
-    addAmbiguityResolutionML,
-    AmbiguityResolutionMLConfig,
-    # addSeedFilterML,
-    # SeedFilterMLDBScanConfig,
 )
 from acts.examples.simulation import (
     MomentumConfig,
@@ -31,12 +26,10 @@ from acts.examples.simulation import (
     addPythia8,
     addGenParticleSelection,
     addFatras,
-    addGeant4,
     addDigitization,
     addDigiParticleSelection,
 )
 
-from random import *
 import os
 import argparse
 import pathlib
@@ -318,9 +311,6 @@ addSeeding(
             nTopForSmallR=2,
         ),
         useVariableMiddleSPRange=False,
-        # deltaRMiddleMinSPRange=10 * u.mm,
-        # deltaRMiddleMaxSPRange=10 * u.mm,
-        # deltaRMiddleSPRange=(1 * u.mm, 10 * u.mm),
     ),
     SeedFinderOptionsArg(bFieldInZ=bFieldZ * u.T,
                          beamPos=(0 * u.mm, 0 * u.mm)),
@@ -350,37 +340,6 @@ addSeeding(
         phiBinDeflectionCoverage=3,
     ),
     SeedingAlgorithmConfigArg(
-        # zBinNeighborsTop=[
-        # [0, 0],
-        # [-1, 0],
-        # [-1, 0],
-        # [-1, 0],
-        # [-1, 0],
-        # [-1, 0],
-        # [-1, 1],
-        # [0, 1],
-        # [0, 1],
-        # [0, 1],
-        # [0, 1],
-        # [0, 1],
-        # [0, 0],
-        # ],
-        # zBinNeighborsBottom=[
-        # [0, 1],
-        # [0, 1],
-        # [0, 1],
-        # [0, 1],
-        # [0, 1],
-        # [0, 1],
-        # [0, 0],
-        # [-1, 0],
-        # [-1, 0],
-        # [-1, 0],
-        # [-1, 0],
-        # [-1, 0],
-        # [-1, 0],
-        # ],
-        # numPhiNeighbors=1,
     ),
     geoSelectionConfigFile=tutorial_dir /
     "geoSelection-alice3-cfg10.json",
