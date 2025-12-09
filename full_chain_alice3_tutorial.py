@@ -49,7 +49,6 @@ import array as arr
 import alice3_iris4_v40 as alice3_geometry
 
 from acts import UnitConstants as u
-from acts.examples import RootParticleReader
 
 parser = argparse.ArgumentParser(
     description="Full chain with the ALICE3 tracker")
@@ -58,7 +57,7 @@ parser.add_argument(
     "-o",
     help="Output directory",
     type=pathlib.Path,
-    default=pathlib.Path.cwd().parent / "reco_output_gun",
+    default=pathlib.Path.cwd().parent / "acts_simulation_output",
 )
 
 parser.add_argument(
@@ -68,15 +67,15 @@ parser.add_argument(
     "--threads", "-nthr", help="Number of threads", type=int, default=-1)
 
 parser.add_argument(
-    "--usePythia",
-    help="Use Pythia8 instead of particle gun",
-    action="store_true",
+    "--generator", type=str, choices=["gun", "pythia_pp", "pythia_pbpb", "pythia_pbpb_central"], default="gun",
 )
 
 args = parser.parse_args()
 
-outputDir = args.output if not args.usePythia else pathlib.Path.cwd().parent / \
-    "reco_output_pythia"
+if not os.path.exists(args.output):
+    os.makedirs(args.output)
+
+outputDir = args.output / f"sim_{args.generator}"
 
 # Partigle gun settings
 particle = acts.PdgParticle.ePionPlus
@@ -118,15 +117,16 @@ detector = alice3_geometry.buildALICE3Geometry(
 trackingGeometry = detector.trackingGeometry()
 decorators = detector.contextDecorators()
 
-#print ("PF:: Magnetic field map", tutorial_dir._str +"/"+"fieldmaps"+"/"+ fieldmapName)
-field = acts.ConstantBField(acts.Vector3(0.0, 0.0, bFieldZ * u.T)) if not useFieldMap else acts.examples.MagneticFieldMapRz(
+# print ("PF:: Magnetic field map", tutorial_dir._str +"/"+"fieldmaps"+"/"+ fieldmapName)
+field = acts.ConstantBField(
+    acts.Vector3(0.0, 0.0, bFieldZ * u.T)) if not useFieldMap else acts.examples.MagneticFieldMapRz(
     str(tutorial_dir / "fieldmaps" / fieldmapName))
 rnd = acts.examples.RandomNumbers(seed=42)
 
 s = acts.examples.Sequencer(
     events=args.events, trackFpes=False, numThreads=args.threads, outputDir=str(outputDir))
 
-if not args.usePythia:
+if args.generator == "gun":
     addParticleGun(
         s,
         MomentumConfig(pTmin * u.MeV, pTmax * u.GeV, transverse=True),
@@ -135,25 +135,103 @@ if not args.usePythia:
                        randomizeCharge=True),
         rnd=rnd,
     )
-else:
-    process_HI_central = ["SoftQCD:inelastic = on", "HeavyIon:bWidth=0.1", "HeavyIon:SigFitErr =  0.02,0.02,0.1,0.05,0.05,0.0,0.1,0.0",
-                          "HeavyIon:SigFitDefPar = 17.24,2.15,0.33,0.0,0.0,0.0,0.0,0.0", "HeavyIon:SigFitNGen = 20",
-                          "ParticleDecays:limitTau0 = on", "ParticleDecays:tau0Max = 10"]
-    addPythia8(
+elif args.generator == "pythia_pp":
+    s = addPythia8(
         s,
-        npileup=0,
-        # beam=acts.PdgParticle.eLead,
-        cmsEnergy=13.6 * acts.UnitConstants.TeV,
-        pileupProcess=["SoftQCD:inelastic = on", "ParticleDecays:limitTau0 = on",
-                       "ParticleDecays:tau0Max = 10", "Tune:pp = 14", "Random:setSeed = on"],
+        npileup=1,
+        # for pp:
+        beam=acts.PdgParticle.eProton,  # eLead,
+        cmsEnergy=13.6 * acts.UnitConstants.TeV,  # 5 * acts.UnitConstants.TeV,
+        hardProcess=[
+            "SoftQCD:inelastic = on",
+            "Tune:pp = 14",
+            "ParticleDecays:limitTau0 = on",
+            "ParticleDecays:tau0Max = 10",
+        ],  # tune 14 is Monash
         vtxGen=acts.examples.GaussianVertexGenerator(
-            stddev=acts.Vector4(0.0125 * u.mm, 0.0125 *
-                                u.mm, 55.5 * u.mm, 5.0 * u.ns),
+            #    stddev=acts.Vector4(0.0125 * u.mm, 0.0125 * u.mm, 10 * u.mm, 5.0 * u.ns),
+            stddev=acts.Vector4(
+                0.000125 * u.mm,
+                0.000125 * u.mm,
+                10 * u.mm,
+                0.0001 * u.ns,
+            ),  # 5.0 * u.ns),
+            # stddev=acts.Vector4(0.0125 * u.mm, 0.0125 * u.mm, 0.1 * u.mm, 5.0 * u.ns),
             mean=acts.Vector4(0, 0, 0, 0),
+            # mean=acts.Vector4(0, 0, 100 * u.mm, 0),
         ),
         rnd=rnd,
+        logLevel=acts.logging.INFO,
         outputDirRoot=outputDir,
     )
+elif args.generator == "pythia_pbpb":
+    s = addPythia8(
+        s,
+        npileup=0,
+        # for Pb-Pb:
+        beam=acts.PdgParticle.eLead,
+        cmsEnergy=5.36 * acts.UnitConstants.TeV,  # 5 * acts.UnitConstants.TeV,
+        # # hardProcess=[ "SoftQCD:inelastic = on", "HeavyIon:SigFitErr =  0.02,0.02,0.1,0.05,0.05,0.0,0.1,0.0",
+        hardProcess=[
+            "SoftQCD:inelastic = on",
+            "HeavyIon:SigFitErr =  0.02,0.02,0.1,0.05,0.05,0.0,0.1,0.0",
+            "HeavyIon:SigFitDefPar = 17.24,2.15,0.33,0.0,0.0,0.0,0.0,0.0",
+            "HeavyIon:SigFitNGen = 20",
+            "ParticleDecays:limitTau0 = on",
+            "ParticleDecays:tau0Max = 10",
+        ],
+        vtxGen=acts.examples.GaussianVertexGenerator(
+            #    stddev=acts.Vector4(0.0125 * u.mm, 0.0125 * u.mm, 10 * u.mm, 5.0 * u.ns),
+            stddev=acts.Vector4(
+                0.000125 * u.mm,
+                0.000125 * u.mm,
+                10 * u.mm,
+                0.0001 * u.ns,
+            ),  # 5.0 * u.ns),
+            # stddev=acts.Vector4(0.0125 * u.mm, 0.0125 * u.mm, 0.1 * u.mm, 5.0 * u.ns),
+            mean=acts.Vector4(0, 0, 0, 0),
+            # mean=acts.Vector4(0, 0, 100 * u.mm, 0),
+        ),
+        rnd=rnd,
+        logLevel=acts.logging.INFO,
+        outputDirRoot=outputDir,
+    )
+elif args.generator == "pythia_pbpb_central":
+    s = addPythia8(
+        s,
+        npileup=0,
+        # for Pb-Pb:
+        beam=acts.PdgParticle.eLead,
+        cmsEnergy=5.36 * acts.UnitConstants.TeV,  # 5 * acts.UnitConstants.TeV,
+        hardProcess=[
+            "SoftQCD:inelastic = on",
+            "HeavyIon:bWidth=0.1",
+            "HeavyIon:SigFitErr =  0.02,0.02,0.1,0.05,0.05,0.0,0.1,0.0",
+            "HeavyIon:SigFitDefPar = 17.24,2.15,0.33,0.0,0.0,0.0,0.0,0.0",
+            "HeavyIon:SigFitNGen = 20",
+            "ParticleDecays:limitTau0 = on",
+            "ParticleDecays:tau0Max = 10",
+        ],
+        vtxGen=acts.examples.GaussianVertexGenerator(
+            #    stddev=acts.Vector4(0.0125 * u.mm, 0.0125 * u.mm, 10 * u.mm, 5.0 * u.ns),
+            stddev=acts.Vector4(
+                0.000125 * u.mm,
+                0.000125 * u.mm,
+                10 * u.mm,
+                0.0001 * u.ns,
+            ),  # 5.0 * u.ns),
+            # stddev=acts.Vector4(0.0125 * u.mm, 0.0125 * u.mm, 0.1 * u.mm, 5.0 * u.ns),
+            mean=acts.Vector4(0, 0, 0, 0),
+            # mean=acts.Vector4(0, 0, 100 * u.mm, 0),
+        ),
+        rnd=rnd,
+        logLevel=acts.logging.INFO,
+        outputDirRoot=outputDir,
+    )
+
+
+else:
+    raise ValueError("Unknown generator option")
 
 
 addGenParticleSelection(
