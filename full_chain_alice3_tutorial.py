@@ -228,8 +228,6 @@ elif args.generator == "pythia_pbpb_central":
         logLevel=acts.logging.INFO,
         outputDirRoot=outputDir,
     )
-
-
 else:
     raise ValueError("Unknown generator option")
 
